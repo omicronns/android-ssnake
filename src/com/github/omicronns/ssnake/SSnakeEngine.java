@@ -23,6 +23,7 @@ public class SSnakeEngine {
 	private int ySize;
 	private boolean died = false;
 	private boolean removeTail = false;
+	private boolean transparentWalls = false;
 	
 	private int movesCount;
 	private int movesToNextApple;
@@ -73,7 +74,7 @@ public class SSnakeEngine {
 		if(movesCount == movesToNextApple) {
 			genApple();
 			movesCount = 0;
-			movesToNextApple = rand.nextInt(10) + 20;
+			movesToNextApple = rand.nextInt(50) + 40;
 		}
 		switch(dir) {
 		case UP:
@@ -88,17 +89,49 @@ public class SSnakeEngine {
 			return true;
 		}
 	}
+	
+	private Point getAhead(Direction direction, Point head) {
+		Point ahead;
+		switch (dir) {
+		case UP:
+			ahead = new Point(head.x, head.y - 1);
+			if(ahead.y < 0)
+				ahead.y = ySize - 1;
+			return ahead;
+		case DOWN:
+			ahead = new Point(head.x, head.y + 1);
+			if(ahead.y >= ySize)
+				ahead.y = 0;
+			return ahead;
+		case RIGHT:
+			ahead = new Point(head.x + 1, head.y);
+			if(ahead.x >= xSize)
+				ahead.y = 0;
+			return ahead;
+		case LEFT:
+			ahead = new Point(head.x - 1, head.y);
+			if(ahead.x < 0)
+				ahead.y = xSize - 1;
+			return ahead;
+		default:
+			return new Point(head);
+		}
+	}
 
 	private boolean moveUp() {
 		if(died)
 			return false;
 		
 		Point head = snake.get(snake.size() - 1);
-		Point ahead = new Point(head.x, head.y - 1);
+		Point ahead = getAhead(dir, head);
 		if(apples.contains(ahead)) {
 			eatApple(ahead);
 		}
-		if(head.y == 0 || snake.contains(ahead)) {
+		if(head.y == 0 && !transparentWalls) {
+			died = true;
+			return false;
+		}
+		else if(snake.contains(ahead)) {
 			died = true;
 			return false;
 		}
@@ -121,7 +154,11 @@ public class SSnakeEngine {
 		if(apples.contains(ahead)) {
 			eatApple(ahead);
 		}
-		if(head.y == ySize - 1 || snake.contains(ahead)) {
+		if(head.y == ySize - 1 && !transparentWalls) {
+			died = true;
+			return false;
+		}
+		else if(snake.contains(ahead)) {
 			died = true;
 			return false;
 		}
@@ -144,7 +181,11 @@ public class SSnakeEngine {
 		if(apples.contains(ahead)) {
 			eatApple(ahead);
 		}
-		if(head.x == xSize - 1 || snake.contains(ahead)) {
+		if(head.x == xSize - 1 && !transparentWalls) {
+			died = true;
+			return false;
+		}
+		else if(snake.contains(ahead)) {
 			died = true;
 			return false;
 		}
@@ -167,7 +208,11 @@ public class SSnakeEngine {
 		if(apples.contains(ahead)) {
 			eatApple(ahead);
 		}
-		if(head.x == 0 || snake.contains(ahead)) {
+		if(head.x == 0 && !transparentWalls) {
+			died = true;
+			return false;
+		}
+		else if(snake.contains(ahead)) {
 			died = true;
 			return false;
 		}
