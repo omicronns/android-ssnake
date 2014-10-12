@@ -18,14 +18,32 @@ import com.github.omicronns.ssnake.SSnakeEngine.Direction;
 public class SSnakeView extends View {
 	
 	SSnakeEngine snakeEngine;
-	private Handler handler = new Handler();
+	boolean runSnake = false;
 	
+	private Handler handler = new Handler();
+
 	private Runnable stepTimer = new Runnable() {
 		@Override
 		public void run() {
-			snakeEngine.move();
-			invalidate(gameSpaceRectInner);
+			if(runSnake) {
+				snakeEngine.move();
+				invalidate(gameSpaceRectOuter);
+				if(snakeEngine.areWallsTransparent()) {
+					gameSpaceFrameColor += 100;
+					gameSpaceFrameColor |= 0xff000000;
+				}
+				else {
+					gameSpaceFrameColor = 0xff000000;
+				}
+			}
 			handler.postDelayed(this, 100);
+		}
+	};
+	
+	private Runnable stepTimerEnable = new Runnable() {
+		@Override
+		public void run() {
+			runSnake = true;
 		}
 	};
 	
@@ -53,6 +71,7 @@ public class SSnakeView extends View {
 	int gameSpaceColor = 0xffffffff;
 	int snakeColor = 0xffff0000;
 	int appleColor = 0xff00ff00;
+	int transparentAppleColor = 0xff0000ff;
 	
 	Rect uiRect = new Rect(0, 0, 1, 1);
 	Rect gameSpaceRectOuter = new Rect(0, 0, 1, 1);
@@ -67,7 +86,15 @@ public class SSnakeView extends View {
 	public SSnakeView(Context context, AttributeSet attrs) {
 		super(context, attrs);
 		snakeEngine = new SSnakeEngine(gameSpaceXSize, gameSpaceYSize);
-		handler.postDelayed(stepTimer, 2000);
+		handler.postDelayed(stepTimer, 0);
+		handler.postDelayed(stepTimerEnable, 2000);
+	}
+	
+	public void restartGame() {
+		snakeEngine.restartEngine();
+		invalidate(gameSpaceRectInner);
+		runSnake = false;
+		handler.postDelayed(stepTimerEnable, 2000);
 	}
 	
 	//TODO: Optimize unnecessary computations
@@ -129,6 +156,11 @@ public class SSnakeView extends View {
 		ArrayList<Point> apples = snakeEngine.getApples();
 		for(int i = 0; i < apples.size(); ++i) {
 			drawSegment(canvas, apples.get(i), appleColor);
+		}
+		
+		ArrayList<Point> transparentApples = snakeEngine.getTransparentApples();
+		for(int i = 0; i < transparentApples.size(); ++i) {
+			drawSegment(canvas, transparentApples.get(i), transparentAppleColor);
 		}
 	}
 	

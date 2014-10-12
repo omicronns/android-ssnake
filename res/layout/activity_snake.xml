@@ -7,6 +7,7 @@
     tools:context="${relativePackage}.${activityClass}" >
     
     <com.github.omicronns.ssnake.SSnakeView 
+        android:id="@+id/snake_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 

@@ -10,34 +10,51 @@ public class SSnakeEngine {
 	
 	public enum Direction {
 		UP,
-		DOWN,
 		LEFT,
+		DOWN,
 		RIGHT
 	};
 	private Direction dir = Direction.RIGHT;
 	
 	private Random rand = new Random();
-	private ArrayList<Point> snake = new ArrayList<Point>();
-	private ArrayList<Point> apples = new ArrayList<Point>();
+	private ArrayList<Point> snake;
+	private ArrayList<Point> apples;
+	private ArrayList<Point> transparentApples;
 	private int xSize;
 	private int ySize;
-	private boolean died = false;
-	private boolean removeTail = false;
-	private boolean transparentWalls = false;
-	
-	private int movesCount;
+	private boolean died;
+	private boolean removeTail;
+	private boolean transparentWalls;
+
+	private int movesToAppleCount;
 	private int movesToNextApple;
+	private int transparentOffCount;
+	private int movesToTransparentOff;
 	
 	public SSnakeEngine(int sizeX, int sizeY) {
 		xSize = sizeX;
 		ySize = sizeY;
+		restartEngine();
+	}
+	
+	public void restartEngine() {
+		dir = Direction.RIGHT;
+		snake = new ArrayList<Point>();
+		apples = new ArrayList<Point>();
+		transparentApples = new ArrayList<Point>();
+		died = false;
+		removeTail = false;
+		transparentWalls = false;
+		movesToAppleCount = 0;
 		snake.add(new Point(5, 5));
 		for(int i = 0; i < 10; ++i) {
 			removeTail = false;
-			moveRight();
+			move();
 		}
 		removeTail = true;
+		movesToAppleCount = 0;
 		movesToNextApple = rand.nextInt(10) + 20;
+		movesToTransparentOff = 50;
 	}
 	
 	public Direction getDirection() {
@@ -45,7 +62,8 @@ public class SSnakeEngine {
 	}
 	
 	public void setDirection(Direction direction) {
-		dir = direction;
+		if(Math.abs((dir.ordinal() - direction.ordinal())) % 2 == 1)
+			dir = direction;
 	}
 	
 	public ArrayList<Point> getSnake() {
@@ -56,38 +74,114 @@ public class SSnakeEngine {
 		return new ArrayList<Point>(apples);
 	}
 	
+	public ArrayList<Point> getTransparentApples() {
+		return new ArrayList<Point>(transparentApples);
+	}
+	
 	public boolean isDead() {
 		return died;
 	}
 	
-	private void genApple() {
-		apples.add(new Point(rand.nextInt(xSize), rand.nextInt(ySize)));
+	public boolean areWallsTransparent() {
+		return transparentWalls;
 	}
 	
-	private void eatApple(Point appleToEat) {
-		apples.remove(appleToEat);
-		removeTail = false;
+	private void genApple() {
+		Point apple = new Point();
+		while(true) {
+			apple.x = rand.nextInt(xSize);
+			apple.y = rand.nextInt(ySize);
+			if(!snake.contains(apple) && !apples.contains(apple) &&
+			   !transparentApples.contains(apple)) {
+				apples.add(apple);
+				break;
+			}
+		} 
+	}
+	
+	private void genTransparentApple() {
+		Point apple = new Point();
+		while(true) {
+			apple.x = rand.nextInt(xSize);
+			apple.y = rand.nextInt(ySize);
+			if(!snake.contains(apple) && !apples.contains(apple) &&
+			   !transparentApples.contains(apple)) {
+				transparentApples.add(apple);
+				break;
+			}
+		} 
 	}
 
 	public boolean move() {
-		++movesCount;
-		if(movesCount == movesToNextApple) {
-			genApple();
-			movesCount = 0;
+		if(died)
+			return false;
+		
+		if(++movesToAppleCount == movesToNextApple) {
+			if(rand.nextInt(100) > 10)
+				genApple();
+			else
+				genTransparentApple();
+			movesToAppleCount = 0;
 			movesToNextApple = rand.nextInt(50) + 40;
 		}
+		
+		if(transparentWalls) {
+			if(++transparentOffCount == movesToTransparentOff) {
+				transparentWalls = false;
+				movesToTransparentOff = rand.nextInt(50) + 120;
+			}
+		}
+		
+		Point head = snake.get(snake.size() - 1);
+		Point ahead = getAhead(dir, head);
+		if(snake.contains(ahead)) {
+			died = true;
+			return false;
+		}
+		if(apples.contains(ahead)) {
+			apples.remove(ahead);
+			removeTail = false;
+		}
+		if(transparentApples.contains(ahead)) {
+			transparentApples.remove(ahead);
+			transparentOffCount = 0;
+			removeTail = false;
+			transparentWalls = true;
+		}
+		
 		switch(dir) {
 		case UP:
-			return moveUp();
+			if(head.y == 0 && !transparentWalls) {
+				died = true;
+				return false;
+			}
+			break;
 		case DOWN:
-			return moveDown();
+			if(head.y == ySize - 1 && !transparentWalls) {
+				died = true;
+				return false;
+			}
+			break;
 		case RIGHT:
-			return moveRight();
+			if(head.x == xSize - 1 && !transparentWalls) {
+				died = true;
+				return false;
+			}
+			break;
 		case LEFT:
-			return moveLeft();
+			if(head.x == 0 && !transparentWalls) {
+				died = true;
+				return false;
+			}
+			break;
 		default:
-			return true;
+			break;
 		}
+		snake.add(ahead);
+		if(removeTail)
+			snake.remove(0);
+		removeTail = true;
+		return true;
 	}
 	
 	private Point getAhead(Direction direction, Point head) {
@@ -106,123 +200,15 @@ public class SSnakeEngine {
 		case RIGHT:
 			ahead = new Point(head.x + 1, head.y);
 			if(ahead.x >= xSize)
-				ahead.y = 0;
+				ahead.x = 0;
 			return ahead;
 		case LEFT:
 			ahead = new Point(head.x - 1, head.y);
 			if(ahead.x < 0)
-				ahead.y = xSize - 1;
+				ahead.x = xSize - 1;
 			return ahead;
 		default:
 			return new Point(head);
-		}
-	}
-
-	private boolean moveUp() {
-		if(died)
-			return false;
-		
-		Point head = snake.get(snake.size() - 1);
-		Point ahead = getAhead(dir, head);
-		if(apples.contains(ahead)) {
-			eatApple(ahead);
-		}
-		if(head.y == 0 && !transparentWalls) {
-			died = true;
-			return false;
-		}
-		else if(snake.contains(ahead)) {
-			died = true;
-			return false;
-		}
-		else {
-			snake.add(ahead);
-			if(removeTail)
-				snake.remove(0);
-			dir = Direction.UP;
-			removeTail = true;
-			return true;
-		}
-	}
-	
-	private boolean moveDown() {
-		if(died)
-			return false;
-		
-		Point head = snake.get(snake.size() - 1);
-		Point ahead = new Point(head.x, head.y + 1);
-		if(apples.contains(ahead)) {
-			eatApple(ahead);
-		}
-		if(head.y == ySize - 1 && !transparentWalls) {
-			died = true;
-			return false;
-		}
-		else if(snake.contains(ahead)) {
-			died = true;
-			return false;
-		}
-		else {
-			snake.add(new Point(ahead));
-			if(removeTail)
-				snake.remove(0);
-			dir = Direction.DOWN;
-			removeTail = true;
-			return true;
-		}
-	}
-	
-	private boolean moveRight() {
-		if(died)
-			return false;
-		
-		Point head = snake.get(snake.size() - 1);
-		Point ahead = new Point(head.x + 1, head.y);
-		if(apples.contains(ahead)) {
-			eatApple(ahead);
-		}
-		if(head.x == xSize - 1 && !transparentWalls) {
-			died = true;
-			return false;
-		}
-		else if(snake.contains(ahead)) {
-			died = true;
-			return false;
-		}
-		else {
-			snake.add(new Point(ahead));
-			if(removeTail)
-				snake.remove(0);
-			dir = Direction.RIGHT;
-			removeTail = true;
-			return true;
-		}
-	}
-	
-	private boolean moveLeft() {
-		if(died)
-			return false;
-		
-		Point head = snake.get(snake.size() - 1);
-		Point ahead = new Point(head.x - 1, head.y);
-		if(apples.contains(ahead)) {
-			eatApple(ahead);
-		}
-		if(head.x == 0 && !transparentWalls) {
-			died = true;
-			return false;
-		}
-		else if(snake.contains(ahead)) {
-			died = true;
-			return false;
-		}
-		else {
-			snake.add(new Point(ahead));
-			if(removeTail)
-				snake.remove(0);
-			dir = Direction.LEFT;
-			removeTail = true;
-			return true;
 		}
 	}
 }
