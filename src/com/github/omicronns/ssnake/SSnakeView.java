@@ -13,6 +13,8 @@ import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
 
+import com.github.omicronns.ssnake.SSnakeEngine.Direction;
+
 public class SSnakeView extends View {
 	
 	SSnakeEngine snakeEngine;
@@ -21,32 +23,11 @@ public class SSnakeView extends View {
 	private Runnable stepTimer = new Runnable() {
 		@Override
 		public void run() {
-			switch(dir) {
-			case UP:
-				snakeEngine.moveUp();
-				break;
-			case DOWN:
-				snakeEngine.moveDown();
-				break;
-			case RIGHT:
-				snakeEngine.moveRight();
-				break;
-			case LEFT:
-				snakeEngine.moveLeft();
-				break;
-			}
+			snakeEngine.move();
 			invalidate(gameSpaceRectInner);
 			handler.postDelayed(this, 100);
 		}
 	};
-	
-	enum Direction {
-		UP,
-		DOWN,
-		LEFT,
-		RIGHT
-	};
-	Direction dir = Direction.RIGHT;
 	
 	float touchX;
 	float touchY;
@@ -71,6 +52,7 @@ public class SSnakeView extends View {
 	int gameSpaceFrameColor = 0xff000000;
 	int gameSpaceColor = 0xffffffff;
 	int snakeColor = 0xffff0000;
+	int appleColor = 0xff00ff00;
 	
 	Rect uiRect = new Rect(0, 0, 1, 1);
 	Rect gameSpaceRectOuter = new Rect(0, 0, 1, 1);
@@ -85,7 +67,7 @@ public class SSnakeView extends View {
 	public SSnakeView(Context context, AttributeSet attrs) {
 		super(context, attrs);
 		snakeEngine = new SSnakeEngine(gameSpaceXSize, gameSpaceYSize);
-		handler.postDelayed(stepTimer, 100);
+		handler.postDelayed(stepTimer, 2000);
 	}
 	
 	//TODO: Optimize unnecessary computations
@@ -141,16 +123,22 @@ public class SSnakeView extends View {
 		
 		ArrayList<Point> snake = snakeEngine.getSnake();
 		for(int i = 0; i < snake.size(); ++i) {
-			drawSnakeSegment(canvas, snake.get(i));
+			drawSegment(canvas, snake.get(i), snakeColor);
+		}
+		
+		ArrayList<Point> apples = snakeEngine.getApples();
+		for(int i = 0; i < apples.size(); ++i) {
+			drawSegment(canvas, apples.get(i), appleColor);
 		}
 	}
 	
-	private void drawSnakeSegment(Canvas canvas, Point segment) {
+	//TODO:Fix segments rects computations so there is no gaps between them
+	private void drawSegment(Canvas canvas, Point segment, int color) {
 		procSegmentRect.left = gameSpaceRectInner.left + (segment.x*gameSpaceWidth)/gameSpaceXSize;
 		procSegmentRect.right = procSegmentRect.left + (gameSpaceWidth/gameSpaceXSize);
 		procSegmentRect.top = gameSpaceRectInner.top + (segment.y*gameSpaceHeight)/gameSpaceYSize;
 		procSegmentRect.bottom = procSegmentRect.top + (gameSpaceHeight/gameSpaceYSize);
-		paint.setColor(snakeColor);
+		paint.setColor(color);
 		canvas.drawRect(procSegmentRect, paint);
 	}
 	
@@ -159,17 +147,27 @@ public class SSnakeView extends View {
 		super.onTouchEvent(event);
 		touchX = event.getX();
 		touchY = event.getY();
-		if(up.isTouched(touchX, touchY)) {
-			dir = Direction.UP;
-		}
-		if(down.isTouched(touchX, touchY)) {
-			dir = Direction.DOWN;
-		}
-		if(left.isTouched(touchX, touchY)) {
-			dir = Direction.LEFT;
-		}
-		if(right.isTouched(touchX, touchY)) {
-			dir = Direction.RIGHT;
+		if(event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+			if(up.isTouched(touchX, touchY)) {
+				if(snakeEngine.getDirection() != Direction.UP) {
+					snakeEngine.setDirection(Direction.UP);
+				}
+			}
+			if(down.isTouched(touchX, touchY)) {
+				if(snakeEngine.getDirection() != Direction.DOWN) {
+					snakeEngine.setDirection(Direction.DOWN);
+				}
+			}
+			if(left.isTouched(touchX, touchY)) {
+				if(snakeEngine.getDirection() != Direction.LEFT) {
+					snakeEngine.setDirection(Direction.LEFT);
+				}
+			}
+			if(right.isTouched(touchX, touchY)) {
+				if(snakeEngine.getDirection() != Direction.RIGHT) {
+					snakeEngine.setDirection(Direction.RIGHT);
+				}
+			}
 		}
 		return true;
 	}
