@@ -1,18 +1,52 @@
 package com.github.omicronns.ssnake;
 
+import java.util.ArrayList;
+
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.RectF;
-import android.text.StaticLayout;
+import android.os.Handler;
 import android.util.AttributeSet;
-import android.util.Pair;
 import android.view.MotionEvent;
 import android.view.View;
 
 public class SSnakeView extends View {
+	
+	SSnakeEngine snakeEngine;
+	private Handler handler = new Handler();
+	
+	private Runnable stepTimer = new Runnable() {
+		@Override
+		public void run() {
+			switch(dir) {
+			case UP:
+				snakeEngine.moveUp();
+				break;
+			case DOWN:
+				snakeEngine.moveDown();
+				break;
+			case RIGHT:
+				snakeEngine.moveRight();
+				break;
+			case LEFT:
+				snakeEngine.moveLeft();
+				break;
+			}
+			invalidate(gameSpaceRectInner);
+			handler.postDelayed(this, 100);
+		}
+	};
+	
+	enum Direction {
+		UP,
+		DOWN,
+		LEFT,
+		RIGHT
+	};
+	Direction dir = Direction.RIGHT;
 	
 	float touchX;
 	float touchY;
@@ -50,6 +84,8 @@ public class SSnakeView extends View {
 
 	public SSnakeView(Context context, AttributeSet attrs) {
 		super(context, attrs);
+		snakeEngine = new SSnakeEngine(gameSpaceXSize, gameSpaceYSize);
+		handler.postDelayed(stepTimer, 100);
 	}
 	
 	//TODO: Optimize unnecessary computations
@@ -92,7 +128,9 @@ public class SSnakeView extends View {
 		gameSpaceRectOuter.right = (int)(x + gameSpaceWidth);
 		paint.setColor(gameSpaceFrameColor);
 		canvas.drawRect(gameSpaceRectOuter, paint);
-		
+
+		gameSpaceWidth -= gameSpaceFrameThickness*2;
+		gameSpaceHeight -= gameSpaceFrameThickness*2;
 
 		gameSpaceRectInner.top = gameSpaceRectOuter.top + gameSpaceFrameThickness;
 		gameSpaceRectInner.bottom = gameSpaceRectOuter.bottom - gameSpaceFrameThickness;
@@ -100,23 +138,19 @@ public class SSnakeView extends View {
 		gameSpaceRectInner.right = gameSpaceRectOuter.right - gameSpaceFrameThickness;
 		paint.setColor(gameSpaceColor);
 		canvas.drawRect(gameSpaceRectInner, paint);
+		
+		ArrayList<Point> snake = snakeEngine.getSnake();
+		for(int i = 0; i < snake.size(); ++i) {
+			drawSnakeSegment(canvas, snake.get(i));
+		}
 	}
 	
-	private void drawSnakeSegment(Canvas canvas, int x, int y) {
-		procSegmentRect.left = gameSpaceRectInner.left + (x*gameSpaceWidth)/gameSpaceXSize;
+	private void drawSnakeSegment(Canvas canvas, Point segment) {
+		procSegmentRect.left = gameSpaceRectInner.left + (segment.x*gameSpaceWidth)/gameSpaceXSize;
 		procSegmentRect.right = procSegmentRect.left + (gameSpaceWidth/gameSpaceXSize);
-		procSegmentRect.top = gameSpaceRectInner.top + (y*gameSpaceHeight)/gameSpaceYSize;
+		procSegmentRect.top = gameSpaceRectInner.top + (segment.y*gameSpaceHeight)/gameSpaceYSize;
 		procSegmentRect.bottom = procSegmentRect.top + (gameSpaceHeight/gameSpaceYSize);
 		paint.setColor(snakeColor);
-		canvas.drawRect(procSegmentRect, paint);
-	}
-	
-	private void removeSnakeSegment(Canvas canvas, int x, int y) {
-		procSegmentRect.left = gameSpaceRectInner.left + (x*gameSpaceWidth)/gameSpaceXSize;
-		procSegmentRect.right = procSegmentRect.left + (gameSpaceWidth/gameSpaceXSize);
-		procSegmentRect.top = gameSpaceRectInner.top + (y*gameSpaceHeight)/gameSpaceYSize;
-		procSegmentRect.bottom = procSegmentRect.top + (gameSpaceHeight/gameSpaceYSize);
-		paint.setColor(gameSpaceColor);
 		canvas.drawRect(procSegmentRect, paint);
 	}
 	
@@ -126,12 +160,16 @@ public class SSnakeView extends View {
 		touchX = event.getX();
 		touchY = event.getY();
 		if(up.isTouched(touchX, touchY)) {
+			dir = Direction.UP;
 		}
 		if(down.isTouched(touchX, touchY)) {
+			dir = Direction.DOWN;
 		}
 		if(left.isTouched(touchX, touchY)) {
+			dir = Direction.LEFT;
 		}
 		if(right.isTouched(touchX, touchY)) {
+			dir = Direction.RIGHT;
 		}
 		return true;
 	}
@@ -142,8 +180,9 @@ public class SSnakeView extends View {
 		canvas.getClipBounds(clippingRect);
 		int width = getWidth();
 		int height = getHeight();
-		if(Rect.intersects(clippingRect, uiRect))
+		if(Rect.intersects(clippingRect, uiRect)) {
 			drawUI(canvas, width/2, height - (uiBottomMargin + buttonHeight + buttonSpacing/2));
+		}
 		if(Rect.intersects(clippingRect, gameSpaceRectOuter)) {
 			drawGameSpace(canvas, gameSpaceMargin, gameSpaceMargin);
 		}
