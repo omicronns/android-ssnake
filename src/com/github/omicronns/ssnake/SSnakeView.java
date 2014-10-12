@@ -3,9 +3,12 @@ package com.github.omicronns.ssnake;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.text.StaticLayout;
 import android.util.AttributeSet;
+import android.util.Pair;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -13,58 +16,109 @@ public class SSnakeView extends View {
 	
 	float touchX;
 	float touchY;
-	float ballX = 300;
-	float ballY = 300;
 	Paint paint = new Paint();
 	
-	Button left = new Button();
-	Button right = new Button();
-	Button down = new Button();
-	Button up = new Button();
+	SButton left = new SButton();
+	SButton right = new SButton();
+	SButton down = new SButton();
+	SButton up = new SButton();
 
-	final int bottomMargin = 10;
+	final int gameSpaceFrameThickness = 10;
+	final int gameSpaceMargin = 10;
+	int gameSpaceWidth;
+	int gameSpaceHeight;
+	int gameSpaceXSize = 50;
+	int gameSpaceYSize = 50;
 	final int buttonSpacing = 10;
 	final int buttonHeight = 80;
 	final int buttonWidth = 100;
-
+	final int uiBottomMargin = 20;
+	int uiColor = 0xff000000;
+	int gameSpaceFrameColor = 0xff000000;
+	int gameSpaceColor = 0xffffffff;
+	int snakeColor = 0xffff0000;
+	
+	Rect uiRect = new Rect(0, 0, 1, 1);
+	Rect gameSpaceRectOuter = new Rect(0, 0, 1, 1);
+	Rect gameSpaceRectInner = new Rect(0, 0, 1, 1);
+	Rect clippingRect = new Rect();
+	Rect procSegmentRect = new Rect();
+	
 	public SSnakeView(Context context) {
 		super(context);
 	}
 
 	public SSnakeView(Context context, AttributeSet attrs) {
 		super(context, attrs);
-		invalidate(10, 10, 100, 100);
 	}
 	
-	private void drawUI(Canvas canvas) {
-		int width = getWidth();
-		int height = getHeight();
-		paint.setColor(0xff000000);
+	//TODO: Optimize unnecessary computations
+	private void drawUI(Canvas canvas, float x, float y) {
+		uiRect.left = (int)(x - (buttonWidth + buttonWidth/2 + buttonSpacing));
+		uiRect.right = (int)(x + (buttonWidth + buttonWidth/2 + buttonSpacing));
+		uiRect.top = (int)(y - (buttonHeight + buttonSpacing/2));
+		uiRect.bottom = (int)(y + (buttonHeight + buttonSpacing/2));
 		
-		down.setButton((width - buttonWidth)/2,
-				height - bottomMargin - buttonHeight,
+		paint.setColor(uiColor);
+		down.setButton(x - buttonWidth/2,
+				y + buttonSpacing/2,
 				buttonWidth,
 				buttonHeight);
-		down.draw(canvas, paint);		
-		up.setButton((width - buttonWidth)/2,
-				height - bottomMargin - buttonHeight*2 - buttonSpacing,
+		down.draw(canvas, paint);
+		up.setButton(x - buttonWidth/2,
+				y - (buttonHeight + buttonSpacing/2),
 				buttonWidth,
 				buttonHeight);
-		up.draw(canvas, paint);		
-		left.setButton((width - buttonWidth)/2 - buttonWidth - buttonSpacing,
-				height - bottomMargin - (buttonHeight*2 + buttonSpacing + buttonHeight)/2,
+		up.draw(canvas, paint);			
+		left.setButton(x - (buttonWidth + buttonWidth/2 + buttonSpacing),
+				y - buttonHeight/2,
 				buttonWidth,
 				buttonHeight);
 		left.draw(canvas, paint);		
-		right.setButton((width + buttonWidth)/2 + buttonSpacing,
-				height - bottomMargin - (buttonHeight*2 + buttonSpacing + buttonHeight)/2,
+		right.setButton(x + buttonWidth/2 + buttonSpacing,
+				y - buttonHeight/2,
 				buttonWidth,
 				buttonHeight);
 		right.draw(canvas, paint);
 	}
 
-	boolean aaa = false;
-	Rect bbb = new Rect();
+	private void drawGameSpace(Canvas canvas, float x, float y) {
+		gameSpaceWidth = getWidth() - gameSpaceMargin*2;
+		gameSpaceHeight = gameSpaceWidth;
+		
+		gameSpaceRectOuter.top = (int)y;
+		gameSpaceRectOuter.bottom = (int)(y + gameSpaceHeight);
+		gameSpaceRectOuter.left = (int)x;
+		gameSpaceRectOuter.right = (int)(x + gameSpaceWidth);
+		paint.setColor(gameSpaceFrameColor);
+		canvas.drawRect(gameSpaceRectOuter, paint);
+		
+
+		gameSpaceRectInner.top = gameSpaceRectOuter.top + gameSpaceFrameThickness;
+		gameSpaceRectInner.bottom = gameSpaceRectOuter.bottom - gameSpaceFrameThickness;
+		gameSpaceRectInner.left = gameSpaceRectOuter.left + gameSpaceFrameThickness;
+		gameSpaceRectInner.right = gameSpaceRectOuter.right - gameSpaceFrameThickness;
+		paint.setColor(gameSpaceColor);
+		canvas.drawRect(gameSpaceRectInner, paint);
+	}
+	
+	private void drawSnakeSegment(Canvas canvas, int x, int y) {
+		procSegmentRect.left = gameSpaceRectInner.left + (x*gameSpaceWidth)/gameSpaceXSize;
+		procSegmentRect.right = procSegmentRect.left + (gameSpaceWidth/gameSpaceXSize);
+		procSegmentRect.top = gameSpaceRectInner.top + (y*gameSpaceHeight)/gameSpaceYSize;
+		procSegmentRect.bottom = procSegmentRect.top + (gameSpaceHeight/gameSpaceYSize);
+		paint.setColor(snakeColor);
+		canvas.drawRect(procSegmentRect, paint);
+	}
+	
+	private void removeSnakeSegment(Canvas canvas, int x, int y) {
+		procSegmentRect.left = gameSpaceRectInner.left + (x*gameSpaceWidth)/gameSpaceXSize;
+		procSegmentRect.right = procSegmentRect.left + (gameSpaceWidth/gameSpaceXSize);
+		procSegmentRect.top = gameSpaceRectInner.top + (y*gameSpaceHeight)/gameSpaceYSize;
+		procSegmentRect.bottom = procSegmentRect.top + (gameSpaceHeight/gameSpaceYSize);
+		paint.setColor(gameSpaceColor);
+		canvas.drawRect(procSegmentRect, paint);
+	}
 	
 	@Override
 	public boolean onTouchEvent(MotionEvent event) {
@@ -72,50 +126,35 @@ public class SSnakeView extends View {
 		touchX = event.getX();
 		touchY = event.getY();
 		if(up.isTouched(touchX, touchY)) {
-			bbb.left = 10;
-			bbb.top = 10;
-			bbb.bottom = 100;
-			bbb.right = 100;
-//			invalidate(bbb);
-			postInvalidate(10, 10, 100, 100);
-			aaa = true;
-			ballY -= 10;
 		}
-		if(down.isTouched(touchX, touchY))
-			ballY += 10;
-		if(left.isTouched(touchX, touchY))
-			ballX -= 10;
-		if(right.isTouched(touchX, touchY))
-			ballX += 10;
-		invalidate();
+		if(down.isTouched(touchX, touchY)) {
+		}
+		if(left.isTouched(touchX, touchY)) {
+		}
+		if(right.isTouched(touchX, touchY)) {
+		}
 		return true;
 	}
 	
 	@Override
 	protected void onDraw(Canvas canvas) {
 		super.onDraw(canvas);
-		if(aaa) {
-			paint.setColor(0xff000000);
-			canvas.drawRect(canvas.getClipBounds(), paint);
-			aaa = false;
+		canvas.getClipBounds(clippingRect);
+		int width = getWidth();
+		int height = getHeight();
+		if(Rect.intersects(clippingRect, uiRect))
+			drawUI(canvas, width/2, height - (uiBottomMargin + buttonHeight + buttonSpacing/2));
+		if(Rect.intersects(clippingRect, gameSpaceRectOuter)) {
+			drawGameSpace(canvas, gameSpaceMargin, gameSpaceMargin);
 		}
-		else {
-			drawUI(canvas);
-			paint.setColor(0xff000000);
-			canvas.drawCircle(ballX, ballY, 20, paint);
-		}
-//		paint.setColor(0xff000000);
-//		Rect r = canvas.getClipBounds();
-//		canvas.drawRect(r, paint);
-		
 	}
 }
 
-class Button {
+class SButton {
 	
 	RectF button = new RectF();
 	
-	public Button() {
+	public SButton() {
 	}	
 	
 	public void setButton(float x, float y, float w, float h) {
