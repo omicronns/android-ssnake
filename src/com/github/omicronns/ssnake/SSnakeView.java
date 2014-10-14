@@ -36,6 +36,8 @@ public class SSnakeView extends View {
 	private int gameSpaceHeight;
 	private int gameSpaceXSize = 50;
 	private int gameSpaceYSize = 50;
+	private int snakeSegmentXSize;
+	private int snakeSegmentYSize;
 	private final int buttonSpacing = 10;
 	private final int buttonHeight = 80;
 	private final int buttonWidth = 100;
@@ -55,12 +57,14 @@ public class SSnakeView extends View {
 	
 	public SSnakeView(Context context) {
 		super(context);
-		snakeEngine = SSnakeEngineSingleton.getInstance(50, 50);
+		snakeEngine = SSnakeEngineSingleton.getInstance(gameSpaceXSize, gameSpaceYSize);
+		SnakeTimer.start(this);
 	}
 
 	public SSnakeView(Context context, AttributeSet attrs) {
 		super(context, attrs);
-		snakeEngine = SSnakeEngineSingleton.getInstance(50, 50);
+		snakeEngine = SSnakeEngineSingleton.getInstance(gameSpaceXSize, gameSpaceYSize);
+		SnakeTimer.start(this);
 	}
 	
 	public void snakeStop() {
@@ -137,6 +141,10 @@ public class SSnakeView extends View {
 
 		gameSpaceWidth -= gameSpaceFrameThickness*2;
 		gameSpaceHeight -= gameSpaceFrameThickness*2;
+		snakeSegmentXSize = gameSpaceWidth/gameSpaceXSize;
+		snakeSegmentYSize = gameSpaceHeight/gameSpaceYSize;
+		gameSpaceWidth = snakeSegmentXSize*gameSpaceXSize;
+		gameSpaceHeight = snakeSegmentYSize*gameSpaceYSize;
 
 		gameSpaceRectInner.top = gameSpaceRectOuter.top + gameSpaceFrameThickness;
 		gameSpaceRectInner.bottom = gameSpaceRectOuter.bottom - gameSpaceFrameThickness;
@@ -161,12 +169,11 @@ public class SSnakeView extends View {
 		}
 	}
 	
-	//TODO:Fix segments rects computations so there is no gaps between them
 	private void drawSegment(Canvas canvas, Point segment, int color) {
 		procSegmentRect.left = gameSpaceRectInner.left + (segment.x*gameSpaceWidth)/gameSpaceXSize;
-		procSegmentRect.right = procSegmentRect.left + (gameSpaceWidth/gameSpaceXSize);
+		procSegmentRect.right = procSegmentRect.left + snakeSegmentXSize;
 		procSegmentRect.top = gameSpaceRectInner.top + (segment.y*gameSpaceHeight)/gameSpaceYSize;
-		procSegmentRect.bottom = procSegmentRect.top + (gameSpaceHeight/gameSpaceYSize);
+		procSegmentRect.bottom = procSegmentRect.top + snakeSegmentYSize;
 		paint.setColor(color);
 		canvas.drawRect(procSegmentRect, paint);
 	}
@@ -243,5 +250,27 @@ class SSnakeEngineSingleton {
 			selfEngine = new SSnakeEngine(x, y);
 		}
 		return selfEngine; 
+	}
+}
+
+class SnakeTimer {
+	private static boolean isStarted = false;
+	private static Handler handler = new Handler();
+	private static SSnakeView snakeView;
+
+	private static Runnable stepTimer = new Runnable() { 
+		@Override
+		public void run() {
+			snakeView.snakeStep();
+			handler.postDelayed(this, 100);
+		}
+	};
+	
+	public static void start(SSnakeView view) {
+		if(!isStarted) {
+			handler.postDelayed(stepTimer, 0);
+			isStarted = true;
+		}
+		snakeView = view;
 	}
 }
