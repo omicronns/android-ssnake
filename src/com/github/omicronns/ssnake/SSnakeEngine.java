@@ -5,7 +5,6 @@ import java.util.Random;
 
 import android.graphics.Point;
 
-
 public class SSnakeEngine {
 	
 	public enum Direction {

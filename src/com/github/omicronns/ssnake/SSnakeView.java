@@ -3,6 +3,7 @@ package com.github.omicronns.ssnake;
 import java.util.ArrayList;
 
 import android.content.Context;
+import android.content.res.Configuration;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Point;
@@ -17,84 +18,76 @@ import com.github.omicronns.ssnake.SSnakeEngine.Direction;
 
 public class SSnakeView extends View {
 	
-	SSnakeEngine snakeEngine;
-	boolean runSnake = false;
+	private SSnakeEngine snakeEngine;
+	private boolean runSnake = false;
 	
-	private Handler handler = new Handler();
+	private float touchX;
+	private float touchY;
+	private Paint paint = new Paint();
+	
+	private SButton left = new SButton();
+	private SButton right = new SButton();
+	private SButton down = new SButton();
+	private SButton up = new SButton();
 
-	private Runnable stepTimer = new Runnable() {
-		@Override
-		public void run() {
-			if(runSnake) {
-				snakeEngine.move();
-				invalidate(gameSpaceRectOuter);
-				if(snakeEngine.areWallsTransparent()) {
-					gameSpaceFrameColor += 100;
-					gameSpaceFrameColor |= 0xff000000;
-				}
-				else {
-					gameSpaceFrameColor = 0xff000000;
-				}
-			}
-			handler.postDelayed(this, 100);
-		}
-	};
+	private final int gameSpaceFrameThickness = 10;
+	private final int gameSpaceMargin = 10;
+	private int gameSpaceWidth;
+	private int gameSpaceHeight;
+	private int gameSpaceXSize = 50;
+	private int gameSpaceYSize = 50;
+	private final int buttonSpacing = 10;
+	private final int buttonHeight = 80;
+	private final int buttonWidth = 100;
+	private final int uiBottomMargin = 20;
+	private int uiColor = 0xff000000;
+	private int gameSpaceFrameColor = 0xff000000;
+	private int gameSpaceColor = 0xffffffff;
+	private int snakeColor = 0xffff0000;
+	private int appleColor = 0xff00ff00;
+	private int transparentAppleColor = 0xff0000ff;
 	
-	private Runnable stepTimerEnable = new Runnable() {
-		@Override
-		public void run() {
-			runSnake = true;
-		}
-	};
-	
-	float touchX;
-	float touchY;
-	Paint paint = new Paint();
-	
-	SButton left = new SButton();
-	SButton right = new SButton();
-	SButton down = new SButton();
-	SButton up = new SButton();
-
-	final int gameSpaceFrameThickness = 10;
-	final int gameSpaceMargin = 10;
-	int gameSpaceWidth;
-	int gameSpaceHeight;
-	int gameSpaceXSize = 50;
-	int gameSpaceYSize = 50;
-	final int buttonSpacing = 10;
-	final int buttonHeight = 80;
-	final int buttonWidth = 100;
-	final int uiBottomMargin = 20;
-	int uiColor = 0xff000000;
-	int gameSpaceFrameColor = 0xff000000;
-	int gameSpaceColor = 0xffffffff;
-	int snakeColor = 0xffff0000;
-	int appleColor = 0xff00ff00;
-	int transparentAppleColor = 0xff0000ff;
-	
-	Rect uiRect = new Rect(0, 0, 1, 1);
-	Rect gameSpaceRectOuter = new Rect(0, 0, 1, 1);
-	Rect gameSpaceRectInner = new Rect(0, 0, 1, 1);
-	Rect clippingRect = new Rect();
-	Rect procSegmentRect = new Rect();
+	private Rect uiRect = new Rect(0, 0, 1, 1);
+	private Rect gameSpaceRectOuter = new Rect(0, 0, 1, 1);
+	private Rect gameSpaceRectInner = new Rect(0, 0, 1, 1);
+	private Rect clippingRect = new Rect();
+	private Rect procSegmentRect = new Rect();
 	
 	public SSnakeView(Context context) {
 		super(context);
+		snakeEngine = SSnakeEngineSingleton.getInstance(50, 50);
 	}
 
 	public SSnakeView(Context context, AttributeSet attrs) {
 		super(context, attrs);
-		snakeEngine = new SSnakeEngine(gameSpaceXSize, gameSpaceYSize);
-		handler.postDelayed(stepTimer, 0);
-		handler.postDelayed(stepTimerEnable, 2000);
+		snakeEngine = SSnakeEngineSingleton.getInstance(50, 50);
+	}
+	
+	public void snakeStop() {
+		runSnake = false;
+	}
+	
+	public void snakeStart() {
+		runSnake = true;
 	}
 	
 	public void restartGame() {
 		snakeEngine.restartEngine();
-		invalidate(gameSpaceRectInner);
-		runSnake = false;
-		handler.postDelayed(stepTimerEnable, 2000);
+		invalidate(gameSpaceRectOuter);
+	}
+	
+	public void snakeStep() {
+		if(runSnake) {
+			snakeEngine.move();
+			invalidate(gameSpaceRectOuter);
+			if(snakeEngine.areWallsTransparent()) {
+				gameSpaceFrameColor += 100;
+				gameSpaceFrameColor |= 0xff000000;
+			}
+		}
+		else {
+			gameSpaceFrameColor = 0xff000000;
+		}
 	}
 	
 	//TODO: Optimize unnecessary computations
@@ -127,8 +120,12 @@ public class SSnakeView extends View {
 		right.draw(canvas, paint);
 	}
 
+	//TODO: Optimize unnecessary computations
 	private void drawGameSpace(Canvas canvas, float x, float y) {
-		gameSpaceWidth = getWidth() - gameSpaceMargin*2;
+		int size = getWidth();
+		if(size > getHeight())
+			size = getHeight();
+		gameSpaceWidth = size - gameSpaceMargin*2;
 		gameSpaceHeight = gameSpaceWidth;
 		
 		gameSpaceRectOuter.top = (int)y;
@@ -181,24 +178,16 @@ public class SSnakeView extends View {
 		touchY = event.getY();
 		if(event.getActionMasked() == MotionEvent.ACTION_DOWN) {
 			if(up.isTouched(touchX, touchY)) {
-				if(snakeEngine.getDirection() != Direction.UP) {
-					snakeEngine.setDirection(Direction.UP);
-				}
+				snakeEngine.setDirection(Direction.UP);
 			}
 			if(down.isTouched(touchX, touchY)) {
-				if(snakeEngine.getDirection() != Direction.DOWN) {
-					snakeEngine.setDirection(Direction.DOWN);
-				}
+				snakeEngine.setDirection(Direction.DOWN);
 			}
 			if(left.isTouched(touchX, touchY)) {
-				if(snakeEngine.getDirection() != Direction.LEFT) {
-					snakeEngine.setDirection(Direction.LEFT);
-				}
+				snakeEngine.setDirection(Direction.LEFT);
 			}
 			if(right.isTouched(touchX, touchY)) {
-				if(snakeEngine.getDirection() != Direction.RIGHT) {
-					snakeEngine.setDirection(Direction.RIGHT);
-				}
+				snakeEngine.setDirection(Direction.RIGHT);
 			}
 		}
 		return true;
@@ -211,7 +200,12 @@ public class SSnakeView extends View {
 		int width = getWidth();
 		int height = getHeight();
 		if(Rect.intersects(clippingRect, uiRect)) {
-			drawUI(canvas, width/2, height - (uiBottomMargin + buttonHeight + buttonSpacing/2));
+			if(getResources().getConfiguration().orientation != Configuration.ORIENTATION_LANDSCAPE) {
+				drawUI(canvas, width/2, height - (uiBottomMargin + buttonHeight + buttonSpacing/2));
+			}
+			else {
+				drawUI(canvas, width - (uiBottomMargin + buttonWidth + buttonWidth/2 + buttonSpacing), height/2);
+			}
 		}
 		if(Rect.intersects(clippingRect, gameSpaceRectOuter)) {
 			drawGameSpace(canvas, gameSpaceMargin, gameSpaceMargin);
@@ -238,5 +232,16 @@ class SButton {
 		if(x > button.left && x < button.right && y < button.bottom && y > button.top)
 			return true;
 		return false;
+	}
+}
+
+class SSnakeEngineSingleton {
+	private static SSnakeEngine selfEngine = null;
+	
+	public static SSnakeEngine getInstance(int x, int y) {
+		if(selfEngine == null) {
+			selfEngine = new SSnakeEngine(x, y);
+		}
+		return selfEngine; 
 	}
 }
