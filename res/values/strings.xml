@@ -3,6 +3,8 @@
 
     <string name="app_name">SSnake</string>
     <string name="hello_world">Hello world!</string>
-    <string name="snake_options">Restart</string>
+    <string name="snake_restart">Restart</string>
+    <string name="snake_start">Start</string>
+    <string name="snake_stop">Stop</string>
 
 </resources>

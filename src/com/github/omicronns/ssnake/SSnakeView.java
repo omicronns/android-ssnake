@@ -39,8 +39,8 @@ public class SSnakeView extends View {
 	private int snakeSegmentXSize;
 	private int snakeSegmentYSize;
 	private final int buttonSpacing = 10;
-	private final int buttonHeight = 80;
-	private final int buttonWidth = 100;
+	private final int buttonHeight = 90;
+	private final int buttonWidth = 130;
 	private final int uiBottomMargin = 20;
 	private int uiColor = 0xff000000;
 	private int gameSpaceFrameColor = 0xff000000;
@@ -75,7 +75,7 @@ public class SSnakeView extends View {
 		runSnake = true;
 	}
 	
-	public void restartGame() {
+	public void snakeRestart() {
 		snakeEngine.restartEngine();
 		invalidate(gameSpaceRectOuter);
 	}
@@ -126,32 +126,7 @@ public class SSnakeView extends View {
 
 	//TODO: Optimize unnecessary computations
 	private void drawGameSpace(Canvas canvas, float x, float y) {
-		int size = getWidth();
-		if(size > getHeight())
-			size = getHeight();
-		gameSpaceWidth = size - gameSpaceMargin*2;
-		gameSpaceHeight = gameSpaceWidth;
-		
-		gameSpaceRectOuter.top = (int)y;
-		gameSpaceRectOuter.bottom = (int)(y + gameSpaceHeight);
-		gameSpaceRectOuter.left = (int)x;
-		gameSpaceRectOuter.right = (int)(x + gameSpaceWidth);
-		paint.setColor(gameSpaceFrameColor);
-		canvas.drawRect(gameSpaceRectOuter, paint);
-
-		gameSpaceWidth -= gameSpaceFrameThickness*2;
-		gameSpaceHeight -= gameSpaceFrameThickness*2;
-		snakeSegmentXSize = gameSpaceWidth/gameSpaceXSize;
-		snakeSegmentYSize = gameSpaceHeight/gameSpaceYSize;
-		gameSpaceWidth = snakeSegmentXSize*gameSpaceXSize;
-		gameSpaceHeight = snakeSegmentYSize*gameSpaceYSize;
-
-		gameSpaceRectInner.top = gameSpaceRectOuter.top + gameSpaceFrameThickness;
-		gameSpaceRectInner.bottom = gameSpaceRectOuter.bottom - gameSpaceFrameThickness;
-		gameSpaceRectInner.left = gameSpaceRectOuter.left + gameSpaceFrameThickness;
-		gameSpaceRectInner.right = gameSpaceRectOuter.right - gameSpaceFrameThickness;
-		paint.setColor(gameSpaceColor);
-		canvas.drawRect(gameSpaceRectInner, paint);
+		drawGameSpaceFrame(canvas, x, y);
 		
 		ArrayList<Point> snake = snakeEngine.getSnake();
 		for(int i = 0; i < snake.size(); ++i) {
@@ -168,12 +143,41 @@ public class SSnakeView extends View {
 			drawSegment(canvas, transparentApples.get(i), transparentAppleColor);
 		}
 	}
+
+	//TODO: Optimize unnecessary computations
+	private void drawGameSpaceFrame(Canvas canvas, float x, float y) {
+		int size = getWidth();
+		if(size > getHeight())
+			size = getHeight();
+		gameSpaceWidth = size - gameSpaceMargin*2;
+		gameSpaceHeight = gameSpaceWidth;
+		
+		gameSpaceRectOuter.top = (int)y;
+		gameSpaceRectOuter.bottom = (int)(y + gameSpaceHeight);
+		gameSpaceRectOuter.left = (int)x;
+		gameSpaceRectOuter.right = (int)(x + gameSpaceWidth);
+		paint.setColor(gameSpaceFrameColor);
+		canvas.drawRect(gameSpaceRectOuter, paint);
+
+		gameSpaceWidth -= gameSpaceFrameThickness*2;
+		gameSpaceHeight -= gameSpaceFrameThickness*2;
+
+		int frameHeight = (gameSpaceRectOuter.bottom - gameSpaceRectOuter.top - gameSpaceHeight)/2;
+		int frameWidth = (gameSpaceRectOuter.right - gameSpaceRectOuter.left - gameSpaceWidth)/2;
+
+		gameSpaceRectInner.top = gameSpaceRectOuter.top + frameHeight;
+		gameSpaceRectInner.bottom = gameSpaceRectOuter.bottom - frameHeight;
+		gameSpaceRectInner.left = gameSpaceRectOuter.left + frameWidth;
+		gameSpaceRectInner.right = gameSpaceRectOuter.right - frameWidth;
+		paint.setColor(gameSpaceColor);
+		canvas.drawRect(gameSpaceRectInner, paint);
+	}
 	
 	private void drawSegment(Canvas canvas, Point segment, int color) {
 		procSegmentRect.left = gameSpaceRectInner.left + (segment.x*gameSpaceWidth)/gameSpaceXSize;
-		procSegmentRect.right = procSegmentRect.left + snakeSegmentXSize;
+		procSegmentRect.right = gameSpaceRectInner.left + ((segment.x + 1)*gameSpaceWidth)/gameSpaceXSize;
 		procSegmentRect.top = gameSpaceRectInner.top + (segment.y*gameSpaceHeight)/gameSpaceYSize;
-		procSegmentRect.bottom = procSegmentRect.top + snakeSegmentYSize;
+		procSegmentRect.bottom = gameSpaceRectInner.top + ((segment.y + 1)*gameSpaceHeight)/gameSpaceYSize;
 		paint.setColor(color);
 		canvas.drawRect(procSegmentRect, paint);
 	}

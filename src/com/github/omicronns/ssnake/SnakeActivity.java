@@ -7,12 +7,20 @@ import android.view.Menu;
 import android.view.MenuItem;
 
 public class SnakeActivity extends Activity {
+	SSnakeView sv;
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_snake);
-		SSnakeView sv = (SSnakeView)findViewById(R.id.snake_view);
+		sv = (SSnakeView)findViewById(R.id.snake_view);
 		sv.snakeStart();
+	}
+	
+	@Override
+	protected void onStop() {
+		super.onStop();
+		sv.snakeStop();
 	}
 
 	@Override
@@ -25,9 +33,16 @@ public class SnakeActivity extends Activity {
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		int id = item.getItemId();
-		if (id == R.id.snake_options) {
-			SSnakeView sv = (SSnakeView)findViewById(R.id.snake_view);
-			sv.restartGame();
+		if (id == R.id.snake_restart) {
+			sv.snakeRestart();
+			return true;
+		}
+		else if (id == R.id.snake_start) {
+			sv.snakeStart();
+			return true;
+		}
+		else if (id == R.id.snake_stop) {
+			sv.snakeStop();
 			return true;
 		}
 		return super.onOptionsItemSelected(item);
