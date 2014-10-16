@@ -2,7 +2,6 @@ package com.github.omicronns.ssnake;
 
 import android.app.Activity;
 import android.os.Bundle;
-import android.os.Handler;
 import android.view.Menu;
 import android.view.MenuItem;
 
@@ -14,7 +13,7 @@ public class SnakeActivity extends Activity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_snake);
 		sv = (SSnakeView)findViewById(R.id.snake_view);
-		sv.snakeStart();
+//		sv.snakeStart();
 	}
 	
 	@Override
